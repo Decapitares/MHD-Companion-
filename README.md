@@ -1,5 +1,5 @@
 # MHD Companion app pro MHD Most a Litvinov
-Jednoduše, přehledně a kdekoli – už žádné luštění jízdních řádů z PDF!
+## Jednoduše, přehledně a kdekoli – už žádné luštění jízdních řádů z PDF!
 
 Je to jednoduchá webová aplikace pro rychlý přístup k jízdním řádům MHD Most a Litvínov.
 ![image](https://github.com/user-attachments/assets/cb10447f-f218-4209-99dd-f2c2e4cc12db)
