@@ -7,9 +7,9 @@ from pywebio.input import select
 from datetime import datetime
 import time
 import threading
-from pytz import timezone, utc
+#from pytz import timezone, utc
 
-import ntplib
+#import ntplib
 from datetime import datetime, timezone, timedelta
 
 def get_corrected_time():
