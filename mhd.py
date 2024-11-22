@@ -197,7 +197,7 @@ class TimetableApp:
 
     def render_navigation_buttons(self):
         put_buttons([
-            {"label": "Zpět1", "value": "stops", "style": "background-color: green; color: white; font-size: 18px; margin-right: 20px;"},
+            {"label": "Zpět", "value": "stops", "style": "background-color: green; color: white; font-size: 18px; margin-right: 20px;"},
         ], onclick=self.navigate)
 
 
