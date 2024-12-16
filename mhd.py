@@ -1,32 +1,25 @@
 import os
 import openpyxl
 from pywebio import start_server
-from pywebio.output import put_buttons, put_text, put_scrollable, clear, toast, use_scope
-from pywebio.session import register_thread, get_current_session, SessionNotFoundException, eval_js  # Přidáme import
+from pywebio.output import put_buttons, put_text, put_scrollable, clear, toast, use_scope, put_html
+from pywebio.session import register_thread, get_current_session, SessionNotFoundException, eval_js
 from pywebio.input import select
 from datetime import datetime
 import time
 import threading
-#from pytz import timezone, utc
-
-#import ntplib
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
+import subprocess
+import sys
 
 def get_corrected_time():
-    """Získá aktuální čas a přidá +1 hodinu pro korekci."""
+    """Získá aktuální čas od klienta a přidá +1 hodinu pro korekci."""
     js_code = """
     let now = new Date();
-    now.toISOString();  // Vrátí čas jako ISO string
+    now.toISOString();
     """
-    client_time_str = eval_js(js_code)  # Získáme ISO string času z klienta
-    client_time = datetime.fromisoformat(client_time_str[:-1])  # Převedeme na datetime objekt
-
-    # Přičteme 1 hodinu
+    client_time_str = eval_js(js_code)
+    client_time = datetime.fromisoformat(client_time_str[:-1])
     corrected_time = client_time + timedelta(hours=1)
-
-    # Debug: Výpis původního a opraveného času
-    print(f"Původní čas klienta: {client_time}")
-    print(f"Opravený čas klienta: {corrected_time}")
 
     return corrected_time
 
@@ -34,20 +27,25 @@ class TimetableApp:
     def __init__(self):
         self.app_dir = os.path.dirname(os.path.abspath(__file__))
         self.timetable_dir = os.path.join(self.app_dir, "Jízdní řády")
+
+        # Cesta k updater skriptu
+        self.update_app_dir = os.path.join(self.app_dir, "update_app")
+        self.update_script = os.path.join(self.update_app_dir, "updater.py")
+
         self.timetable = {}
         self.current_stop = None
         self.current_times = []
-        self.current_section = "stops"  # Výchozí sekce
-        self.running = True  # Kontrola běhu odpočtu
+        self.current_section = "stops"
+        self.running = True
 
         if not os.path.exists(self.timetable_dir):
             os.makedirs(self.timetable_dir)
-            
+
     def start_countdown_thread(self):
         """Spustí vlákno pro dynamický odpočet a registruje ho."""
         countdown_thread = threading.Thread(target=self.update_countdown, daemon=True)
-        register_thread(countdown_thread)  # Zaregistrujeme vlákno
-        countdown_thread.start()  # Spustíme vlákno
+        register_thread(countdown_thread)
+        countdown_thread.start()
 
     def load_timetables(self):
         xlsx_files = [
@@ -78,7 +76,7 @@ class TimetableApp:
                         minute_list = [minute.strip() for minute in str(minutes).split(",")]
                         for minute in minute_list:
                             timetable[stop_name].append(f"{int(hour):02}:{minute}")
-                    except Exception as e:
+                    except Exception:
                         pass
         return timetable
 
@@ -89,6 +87,7 @@ class TimetableApp:
         elif self.current_section == "times":
             self.render_times_section()
         self.render_navigation_buttons()
+        self.render_update_button()  # Přidání tlačítka Update data
 
     def render_stops_section(self):
         put_text("Vyberte linku:")
@@ -102,96 +101,62 @@ class TimetableApp:
         put_buttons(stop_buttons, onclick=self.show_times)
 
     def render_times_section(self):
-        """Vykreslí sekci časů příjezdů."""
         if self.current_stop:
             with use_scope("countdown_scope", clear=True):
-                # Umístíme placeholder pro odpočet (bude aktualizován vlákny)
                 put_text("Příjezd za: ...").style('font-size: 20px; font-weight: bold;')
             put_text(f"Časy příjezdů pro zastávku {self.current_stop}:")
-            self.update_times()  # Zobrazení všech časů
-            self.start_countdown_thread()  # Spuštění vlákna pro dynamický odpočet
+            self.update_times()
+            self.start_countdown_thread()
         else:
             put_text("Nejprve vyberte zastávku v sekci 'Zastávky'.")
-    
+
     def update_times(self):
-        """Aktualizuje a zobrazuje časy příjezdů podle aktuálního času."""
         try:
-            # Získáme opravený čas
             corrected_time = get_corrected_time()
-    
-            # Debug: Výpis aktuálního opraveného času
-            print(f"Aktuální opravený čas: {corrected_time}")
-    
-            # Filtrování časů, aby zůstaly jen budoucí časy
             self.current_times = [
                 time for time in self.timetable.get(self.current_stop, [])
                 if time >= corrected_time.strftime("%H:%M")
             ]
-    
-            # Debug: Výpis aktuálních časů po filtrování
-            print(f"Časy příjezdů po aktualizaci: {self.current_times}")
-    
-            # Aktualizace zobrazení časů
             with use_scope("times_scope", clear=True):
                 if self.current_times:
-                    put_scrollable(
-                        "\n".join(self.current_times), height=200
-                    )
+                    put_scrollable("\n".join(self.current_times), height=200)
                 else:
                     put_text("Žádné další příjezdy dnes.")
         except Exception as e:
             print(f"Chyba při aktualizaci časů: {e}")
-    
+
     def update_countdown(self):
-        """Pravidelně aktualizuje odpočet podle opraveného času."""
         try:
             while self.running:
-                # Získáme opravený čas
                 corrected_time = get_corrected_time()
-    
-                # Debug: Výpis aktuálního opraveného času
-                print(f"Aktuální opravený čas v odpočtu: {corrected_time}")
-    
+
                 if self.current_stop and self.current_times:
-                    # Dynamicky aktualizujeme seznam aktuálních časů
                     self.current_times = [
                         time for time in self.timetable.get(self.current_stop, [])
                         if time >= corrected_time.strftime("%H:%M")
                     ]
-    
-                    # Debug: Výpis aktuálních časů po aktualizaci
-                    print(f"Časy příjezdů po aktualizaci: {self.current_times}")
-    
-                    # Pokud nejsou další časy, zobrazíme zprávu a ukončíme odpočet
+
                     if not self.current_times:
                         with use_scope("countdown_scope", clear=True):
                             put_text("Žádné další příjezdy dnes.").style('font-size: 20px; font-weight: bold;')
                         break
-    
-                    # Výpočet odpočtu k nejbližšímu času
+
                     next_time_str = self.current_times[0]
                     next_time_naive = datetime.strptime(next_time_str, "%H:%M")
                     next_time = corrected_time.replace(hour=next_time_naive.hour, minute=next_time_naive.minute, second=0, microsecond=0)
-    
-                    # Výpočet minut do dalšího příjezdu
                     minutes_to_next = int((next_time - corrected_time).total_seconds() // 60)
-    
-                    # Aktualizace odpočtu a seznamu časů
+
                     with use_scope("countdown_scope", clear=True):
                         put_text(f"Příjezd za: {minutes_to_next} min").style('font-size: 20px; font-weight: bold;')
-    
-                    # Aktualizace seznamu časů
+
                     with use_scope("times_scope", clear=True):
-                        put_scrollable(
-                            "\n".join(self.current_times), height=200
-                        )
+                        put_scrollable("\n".join(self.current_times), height=200)
                 else:
-                    # Pokud nejsou vybrány časy nebo zastávka
                     with use_scope("countdown_scope", clear=True):
                         put_text("Žádné další příjezdy dnes.").style('font-size: 20px; font-weight: bold;')
                     break
-    
-                time.sleep(60)  # Aktualizace každou minutu
+
+                time.sleep(60)
         except SessionNotFoundException:
             self.running = False
 
@@ -200,16 +165,27 @@ class TimetableApp:
             {"label": "Zpět", "value": "stops", "style": "background-color: green; color: white; font-size: 18px; margin-right: 20px;"},
         ], onclick=self.navigate)
 
+    def render_update_button(self):
+        put_html("<hr>")
+        put_buttons([{"label": "Update data", "value": "update"}], onclick=self.run_update_script)
+
+    def run_update_script(self, _):
+        try:
+            subprocess.run([sys.executable, self.update_script], check=True)
+            toast("Data byla úspěšně aktualizována.")
+            # Po aktualizaci můžeme třeba znovu načíst rozhraní
+            self.render_ui()
+        except Exception as e:
+            toast(f"Nepodařilo se aktualizovat data: {e}")
 
     def navigate(self, section):
         self.current_section = section
         self.render_ui()
 
     def show_times(self, stop):
-        """Uloží vybranou zastávku a přepne na sekci časů."""
         self.current_stop = stop
         self.current_section = "times"
-        self.start_countdown_thread()  # Spuštění registrovaného vlákna
+        self.start_countdown_thread()
         self.render_ui()
 
     def start(self):
