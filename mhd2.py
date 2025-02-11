@@ -136,4 +136,4 @@ def background_update():
 if __name__ == '__main__':
     update_thread = threading.Thread(target=background_update, daemon=True)
     update_thread.start()
-    socketio.run(app, debug=True, port=8123)
+    socketio.run(app, host='0.0.0.0', debug=True, port=8123)
