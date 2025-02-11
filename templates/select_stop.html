@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Výběr zastávky</title>
+</head>
+<body>
+    <h1>Vyberte zastávku:</h1>
+    <form method="post" action="{{ url_for('select_stop') }}">
+        {% for stop in timetable %}
+            <button type="submit" name="stop" value="{{ stop }}">{{ stop }}</button>
+        {% endfor %}
+    </form>
+</body>
+</html>

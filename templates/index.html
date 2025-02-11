@@ -1,0 +1,150 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jízdní řády</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .times-container {
+            height: 300px;
+            overflow-y: auto;
+        }
+        .countdown {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Jízdní řády</h1>
+        
+        <div class="mb-4">
+            <label for="lineSelect" class="form-label">Vyberte linku:</label>
+            <select id="lineSelect" class="form-select">
+                <option value="">Vyberte si linku</option>
+            </select>
+        </div>
+
+        <div id="stopsContainer" class="mb-4" style="display: none;">
+            <h2>Zastávky:</h2>
+            <div id="stopButtons" class="d-grid gap-2"></div>
+        </div>
+
+        <div id="timesContainer" style="display: none;">
+            <h2>Časy příjezdů</h2>
+            <div id="countdown" class="countdown"></div>
+            <div id="timesList" class="times-container"></div>
+        </div>
+
+        <button id="backButton" class="btn btn-success mt-3" style="display: none;">
+            Zpět
+        </button>
+
+        <hr>
+        <button id="updateButton" class="btn btn-primary">
+            Update data
+        </button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let currentLine = '';
+        let currentStop = '';
+
+        // Načtení linek při startu
+        fetch('/get_lines')
+            .then(response => response.json())
+            .then(lines => {
+                const lineSelect = document.getElementById('lineSelect');
+                lines.forEach(line => {
+                    const option = document.createElement('option');
+                    option.value = line;
+                    option.textContent = line;
+                    lineSelect.appendChild(option);
+                });
+            });
+
+        // Výběr linky
+        document.getElementById('lineSelect').addEventListener('change', function(e) {
+            currentLine = e.target.value;
+            if (currentLine) {
+                fetch(`/get_stops/${currentLine}`)
+                    .then(response => response.json())
+                    .then(stops => {
+                        const stopButtons = document.getElementById('stopButtons');
+                        stopButtons.innerHTML = '';
+                        stops.forEach(stop => {
+                            const button = document.createElement('button');
+                            button.className = 'btn btn-primary mb-2';
+                            button.textContent = stop;
+                            button.onclick = () => selectStop(stop);
+                            stopButtons.appendChild(button);
+                        });
+                        document.getElementById('stopsContainer').style.display = 'block';
+                        document.getElementById('timesContainer').style.display = 'none';
+                    });
+            }
+        });
+
+        // Výběr zastávky
+        function selectStop(stop) {
+            currentStop = stop;
+            socket.emit('select_stop', {
+                line: currentLine,
+                stop: stop
+            });
+            document.getElementById('stopsContainer').style.display = 'none';
+            document.getElementById('timesContainer').style.display = 'block';
+            document.getElementById('backButton').style.display = 'block';
+        }
+
+        // Socket.IO události
+        socket.on('update_times', data => {
+            const timesList = document.getElementById('timesList');
+            const countdown = document.getElementById('countdown');
+            
+            if (data.times && data.times.length > 0) {
+                timesList.innerHTML = data.times.join('<br>');
+                countdown.textContent = data.countdown 
+                    ? `Příjezd za: ${data.countdown} min` 
+                    : 'Žádné další příjezdy dnes';
+            } else {
+                timesList.innerHTML = 'Žádné další příjezdy dnes';
+                countdown.textContent = '';
+            }
+        });
+
+        // Tlačítko zpět
+        document.getElementById('backButton').addEventListener('click', function() {
+            document.getElementById('stopsContainer').style.display = 'block';
+            document.getElementById('timesContainer').style.display = 'none';
+            document.getElementById('backButton').style.display = 'none';
+            currentStop = '';
+        });
+
+        // Update data
+        document.getElementById('updateButton').addEventListener('click', function() {
+            fetch('/update_data', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Data byla úspěšně aktualizována');
+                    location.reload();
+                } else {
+                    alert('Nepodařilo se aktualizovat data');
+                }
+            })
+            .catch(error => {
+                alert('Chyba při aktualizaci dat');
+            });
+        });
+    </script>
+</body>
+</html>
