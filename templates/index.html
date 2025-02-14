@@ -10,6 +10,8 @@
             height: 100%;
             display: flex;
             flex-direction: column;
+            background-color: #28282b;
+            padding-top: 20px;
         }
 
         .container {
@@ -28,15 +30,49 @@
         }
 
         footer {
-            background-color: #f8f9fa;
+            background-color: #4d4f50;
             padding: 10px 0;
             margin-top: auto;
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: #37393a !important;
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: 60px; /* Nastav výšku headeru */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+        }
+
+        .header-content h1 {
+            margin: 0;
+            padding-left: 15px;
+            color: #c7db11;
+            text-decoration: none;
+            font-size: 24px; /* Můžeš upravit velikost textu */
+        }
+        
+        /* Pokud chcete, aby logo mělo maximální výšku */
+        header img {
+            max-height: 40px;
+            width: auto;
         }
     </style>
 </head>
 <body>
     <div class="container mt-4">
-        <h1>MHD Companion</h1>
+        <h1><a href="https://mhd.sidereum.org" target="_self" style="color: #bdc00e;"></a></h1>
         
         <div class="mb-4">
             <label for="lineSelect" class="form-label">Vyberte linku:</label>
@@ -45,12 +81,12 @@
             </select>
         </div>
 
-        <div id="stopsContainer" class="mb-4" style="display: none;">
+        <div id="stopsContainer" class="mb-4" style="color: #d1d1d1;">
             <h2>Zastávky:</h2>
             <div id="stopButtons" class="d-grid gap-2"></div>
         </div>
 
-        <div id="timesContainer" style="display: none;">
+        <div id="timesContainer" style="color: #d1d1d1;">
             <h2>Časy příjezdů</h2>
             <div id="countdown" class="countdown"></div>
             <div id="timesList" class="times-container"></div>
@@ -66,11 +102,21 @@
         </button>
     </div>
 
-    <footer class="text-center mt-4 py-3 bg-light">
-        <p>Designed by <a href="https://sidereum.org" target="_blank">Sidereum.org</a> | 
-           <a href="https://github.com/Decapitares/MHD-Companion-" target="_blank">GitHub</a>
+    <footer class="text-center mt-4 py-3">
+        <p>Designed by <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" style="color: #d1d1d1;" target="_blank">Sidereum.org</a> | 
+           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank">GitHub</a>
         </p>
     </footer>
+
+    <header class="text-center mt-4 py-3">
+        <div class="container">
+            <div class="d-flex align-items-center">
+                <img src="{{ url_for('static', filename='Assets/logo.png') }}" alt="Sidereum" height="100">
+                <!-- Pokud chcete text vedle loga -->
+                <h1 class="mb-0 ms-3"><a href="https://mhd.sidereum.org" style="color: #aa963c; text-decoration: none;">MHD Companion</a></h1>
+            </div>
+        </div>
+    </header>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script>
